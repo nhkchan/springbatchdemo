@@ -1,5 +1,8 @@
 /Users/ken/eclipse-workspace/springbatchtest/src/main/java/hello/BatchConfiguration.java
+/Users/ken/eclipse-workspace/springbatchtest/src/main/java/hello/VGSalesProcessor.java
+/Users/ken/eclipse-workspace/springbatchtest/src/main/java/hello/VGSales.java
 /Users/ken/eclipse-workspace/springbatchtest/src/main/java/hello/PersonItemProcessor.java
 /Users/ken/eclipse-workspace/springbatchtest/src/main/java/hello/Application.java
+/Users/ken/eclipse-workspace/springbatchtest/src/main/java/hello/MyDataSourceFactory.java
 /Users/ken/eclipse-workspace/springbatchtest/src/main/java/hello/JobCompletionNotificationListener.java
 /Users/ken/eclipse-workspace/springbatchtest/src/main/java/hello/Person.java
