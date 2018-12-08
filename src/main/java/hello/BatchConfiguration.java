@@ -9,6 +9,7 @@ import org.springframework.batch.core.configuration.annotation.EnableBatchProces
 import org.springframework.batch.core.configuration.annotation.JobBuilderFactory;
 import org.springframework.batch.core.configuration.annotation.StepBuilderFactory;
 import org.springframework.batch.core.launch.support.RunIdIncrementer;
+import org.springframework.batch.item.ExecutionContext;
 import org.springframework.batch.item.ItemReader;
 import org.springframework.batch.item.ParseException;
 import org.springframework.batch.item.UnexpectedInputException;
@@ -38,8 +39,10 @@ import javax.persistence.EntityManagerFactory;
 @EnableBatchProcessing
 public class BatchConfiguration {
 
+	/*
 	@Autowired
 	EntityManagerFactory emf;
+	*/
 	
     @Autowired
     public JobBuilderFactory jobBuilderFactory;
@@ -57,16 +60,43 @@ public class BatchConfiguration {
         return lineAggregator;
     }
  
+    private LineAggregator<Person> createPersonAggregator() {
+        DelimitedLineAggregator<Person> lineAggregator = new DelimitedLineAggregator<>();
+        lineAggregator.setDelimiter(",");
+ 
+        FieldExtractor<Person> fieldExtractor = createPersonFieldExtractor();
+        lineAggregator.setFieldExtractor(fieldExtractor);
+ 
+        return lineAggregator;
+    }
     private FieldExtractor<VGSales> createVGSalesFieldExtractor() {
         BeanWrapperFieldExtractor<VGSales> extractor = new BeanWrapperFieldExtractor<>();
         extractor.setNames(new String[] {"rank", "name", "platform","year","genre","publisher","naSales","euSales","jpSales","otherSales","globalSales"});
         return extractor;
     }    
     
-    ItemReader<Person> jdbcReader() {
+    private FieldExtractor<Person> createPersonFieldExtractor() {
+        BeanWrapperFieldExtractor<Person> extractor = new BeanWrapperFieldExtractor<>();
+        extractor.setNames(new String[] {"first", "last"});
+        return extractor;
+    }
+    
+    public ItemReader<Person> jdbcReader() throws UnexpectedInputException, ParseException, Exception {
     	JdbcCursorItemReader<Person> dbReader = new JdbcCursorItemReader<>();
+    	dbReader.setDataSource(MyDataSourceFactory.getJDBCDataSource());
+    	System.out.println(dbReader.getDataSource());
+    	dbReader.setSql("SELECT 'FIRST' as name, 'LAST' as lname FROM DUAL");
+    	dbReader.setRowMapper(new PersonRowMapper());
+    	ExecutionContext executionContext = new ExecutionContext();
+    	dbReader.open(executionContext);
     	
-		return null;
+    	Object person = new Object();
+    	
+    	while (person != null) {
+    		person = dbReader.read();
+    	}
+    	dbReader.close();
+		return dbReader;
     }
     
     // tag::readerwriterprocessor[]
@@ -101,6 +131,17 @@ public class BatchConfiguration {
 		return flatFileItemWriter;
 	}
     
+	public FlatFileItemWriter<Person> personWriter() {
+		FlatFileItemWriter<Person> flatFileItemWriter = new FlatFileItemWriter<>();
+		flatFileItemWriter.setShouldDeleteIfExists(true);
+		flatFileItemWriter.setResource(new FileSystemResource("person_writer.csv"));
+		
+		LineAggregator<Person> lineAggregator = createPersonAggregator();
+		flatFileItemWriter.setLineAggregator(lineAggregator);
+		return flatFileItemWriter;
+	}
+    
+    /*
     @Bean
     public JpaItemWriter<VGSales> jpaWriter() {
     	
@@ -110,6 +151,7 @@ public class BatchConfiguration {
 		return jpaWriter;
     	
     }
+    */
     
     // end::readerwriterprocessor[]
     
@@ -119,13 +161,13 @@ public class BatchConfiguration {
             FlatFileItemReader<Person> reader,
             JdbcBatchItemWriter<Person> writer) {
 */
-    Job personEtl(JobBuilderFactory jobBuilderFactory,
-    StepBuilderFactory stepBuilderFactory,
-    JdbcCursorItemReader<Person> reader) {
+    public Job personEtl(JobBuilderFactory jobBuilderFactory,
+    StepBuilderFactory stepBuilderFactory) throws UnexpectedInputException, ParseException, Exception {
     
     	Step step = stepBuilderFactory.get("database-reader")
     			.<Person, Person>chunk(5)
-    			.reader(reader)
+    			.reader(jdbcReader())
+    			.writer(personWriter())
     			.build();
     	
     	Job job = jobBuilderFactory.get("etl")
